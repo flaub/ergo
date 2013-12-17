@@ -21,7 +21,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Errors and error utility functions.
+// Package ergo contains generalized error utilities.
 package ergo
 
 import (
@@ -32,20 +32,21 @@ import (
 	"text/template"
 )
 
-// An error code
+// ErrCode defines a type for error codes.
 type ErrCode int
 
-// A collection of named values associated with an error.
+// ErrInfo is a collection of named values associated with an error.
 type ErrInfo map[string]interface{}
 
-// A domain represents a set of error codes and their associated
-// message formats.
+// DomainMap is used to define message formats associated with error coddes.
 type DomainMap map[ErrCode]string
 
-// A function that users can implement to define their own message formats.
+// FormatFunc is a function that users can implement to define their own message formats.
 type FormatFunc func(err *Error) string
 
-// A generic error. This type is designed to be serializable.
+// Error is a generic error designed to be serializable and provide
+// additional information for developers while keeping
+// friendly messages distinct for end users.
 type Error struct {
 	_struct bool `codec:",omitempty"` // set omitempty for every field
 
@@ -77,8 +78,8 @@ func init() {
 	})
 }
 
-// Create a new error.
-// Skip is used to skip stack frames,
+// New creates a new error.
+// "skip" is used to skip stack frames,
 // a value of 0 means the stack will start at the call site of Make().
 // "args" is a set of pairs to be used to populate "Info":
 // first is the key, second is the value.

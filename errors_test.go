@@ -1,3 +1,26 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2013 Frank Laub
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 package ergo
 
 import (
@@ -33,20 +56,20 @@ func TestRunner(t *testing.T) {
 }
 
 func NewError(code ErrCode, args ...interface{}) *Error {
-	return Make(1, "ergo", code, args...)
+	return New(1, "ergo", code, args...)
 }
 
 func (t *TestSuite) BeforeAll() {
 	Domain("ergo", errors)
 }
 
-func (t *TestSuite) TestMake() {
-	err := Make(0, "ergo", EMyError0)
+func (t *TestSuite) TestNew() {
+	err := New(0, "ergo", EMyError0)
 	t.Not(t.Nil(err))
 	t.Equal("ergo", err.Domain)
 	t.Equal(EMyError0, err.Code)
 	first := strings.SplitN(err.Context, "\n", 3)
-	t.Check(first[1], gc.Matches, "*TestMake$")
+	t.Check(first[1], gc.Matches, "*TestNew$")
 	t.Equal(errors[EMyError0], err.Message())
 	lines := strings.Split(err.Error(), "\n")
 	t.Equal("[ergo:0] My error 0", lines[0])
@@ -111,7 +134,7 @@ func (t *TestSuite) TestWrap() {
 }
 
 func (t *TestSuite) TestNoDomain() {
-	err := Make(0, "x", 1, "arg", "x")
+	err := New(0, "x", 1, "arg", "x")
 	t.Not(t.Nil(err))
 	t.Equal("x", err.Domain)
 	t.Equal(ErrCode(1), err.Code)

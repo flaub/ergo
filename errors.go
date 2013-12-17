@@ -1,3 +1,27 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2013 Frank Laub
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+// Errors and error utility functions.
 package ergo
 
 import (
@@ -8,18 +32,39 @@ import (
 	"text/template"
 )
 
-type ErrCode uint
+// An error code
+type ErrCode int
+
+// A collection of named values associated with an error.
 type ErrInfo map[string]interface{}
+
+// A domain represents a set of error codes and their associated
+// message formats.
 type DomainMap map[ErrCode]string
+
+// A function that users can implement to define their own message formats.
 type FormatFunc func(err *Error) string
 
+// A generic error. This type is designed to be serializable.
 type Error struct {
-	_struct bool    `codec:",omitempty"` // set omitempty for every field
-	Domain  string  `json:",omitempty"`
-	Code    ErrCode `json:",omitempty"`
-	Info    ErrInfo `json:",omitempty"`
-	Context string  `json:",omitempty"`
-	Inner   *Error  `json:",omitempty"`
+	_struct bool `codec:",omitempty"` // set omitempty for every field
+
+	// The domain of this error.
+	Domain string `json:",omitempty"`
+
+	// The error code of this error.
+	Code ErrCode `json:",omitempty"`
+
+	// A collection of named values associated with this error.
+	Info ErrInfo `json:",omitempty"`
+
+	// Additional context to help developers determine the source of an error.
+	// In go, this is a stack trace. In C++, this could be file:line.
+	Context string `json:",omitempty"`
+
+	// Used for defining a chain of errors.
+	// The innermost error represents the original error.
+	Inner *Error `json:",omitempty"`
 }
 
 var (
@@ -32,7 +77,12 @@ func init() {
 	})
 }
 
-func Make(skip int, domain string, code ErrCode, args ...interface{}) *Error {
+// Create a new error.
+// Skip is used to skip stack frames,
+// a value of 0 means the stack will start at the call site of Make().
+// "args" is a set of pairs to be used to populate "Info":
+// first is the key, second is the value.
+func New(skip int, domain string, code ErrCode, args ...interface{}) *Error {
 	err := &Error{
 		Domain:  domain,
 		Code:    code,
@@ -53,9 +103,14 @@ func Make(skip int, domain string, code ErrCode, args ...interface{}) *Error {
 
 func _Wrap(skip int, err error, args ...interface{}) *Error {
 	sys := []interface{}{"_err", err.Error()}
-	return Make(skip+1, "go", 0, append(sys, args...)...)
+	return New(skip+1, "go", 0, append(sys, args...)...)
 }
 
+// Wrap takes a generic interface "x" and returns an Error.
+// If "x" is nil, nil is returned.
+// If "x" is an Error, this is returned.
+// If "x" implements the standard error interface, a standard Error is generated.
+// Otherwise, "x" is converted into a string and used to generate a standard Error.
 func Wrap(x interface{}, args ...interface{}) *Error {
 	if x == nil {
 		return nil
@@ -69,11 +124,15 @@ func Wrap(x interface{}, args ...interface{}) *Error {
 	return _Wrap(1, fmt.Errorf("%v", x), args...)
 }
 
+// Chain links an inner error to an outer one.
+// The result is the outer error.
 func Chain(inner *Error, err *Error) *Error {
 	err.Inner = inner
 	return err
 }
 
+// Cause returns the cause of the error,
+// which is the innermost error in a chain.
 func Cause(err *Error) *Error {
 	if err.Inner == nil {
 		return err
@@ -81,6 +140,8 @@ func Cause(err *Error) *Error {
 	return Cause(err.Inner)
 }
 
+// DomainFunc allows users to define custom domains.
+// This is a low-level API.
 func DomainFunc(name string, fn FormatFunc) {
 	_, ok := domains[name]
 	if ok {
@@ -89,6 +150,9 @@ func DomainFunc(name string, fn FormatFunc) {
 	domains[name] = fn
 }
 
+// Domain allows users to define custom domains.
+// A domain represents a set of error codes and their associated
+// message formats.
 func Domain(name string, domain DomainMap) {
 	tmpls := make(map[ErrCode]*template.Template)
 	for code, text := range domain {
@@ -123,21 +187,25 @@ func stackTrace(skip int) string {
 	return buf.String()
 }
 
-func (this *Error) Message() string {
-	domain, ok := domains[this.Domain]
+// Message returns the friendly error message without context.
+// This is appropriate for displaying to end users.
+func (err *Error) Message() string {
+	domain, ok := domains[err.Domain]
 	if ok {
-		return domain(this)
-	} else {
-		return fmt.Sprintf("Domain missing: [%v:%d] %v",
-			this.Domain, this.Code, this.Info)
+		return domain(err)
 	}
+	return fmt.Sprintf("Domain missing: [%v:%d] %v",
+		err.Domain, err.Code, err.Info)
 }
 
-func (this *Error) Error() string {
+// Error implements error.Error().
+// The entire chain along with context is returned.
+// Use Message() to display end user friendly messages.
+func (err *Error) Error() string {
 	str := fmt.Sprintf("[%v:%d] %v\n%v",
-		this.Domain, this.Code, this.Message(), this.Context)
-	if this.Inner == nil {
+		err.Domain, err.Code, err.Message(), err.Context)
+	if err.Inner == nil {
 		return str
 	}
-	return this.Inner.Error() + "\n" + str
+	return err.Inner.Error() + "\n" + str
 }

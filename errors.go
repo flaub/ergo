@@ -128,6 +128,9 @@ func Wrap(x interface{}, args ...interface{}) *Error {
 // Chain links an inner error to an outer one.
 // The result is the outer error.
 func Chain(inner *Error, err *Error) *Error {
+	if inner == nil {
+		return nil
+	}
 	err.Inner = inner
 	return err
 }

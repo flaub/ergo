@@ -153,7 +153,7 @@ func DomainFunc(name string, fn FormatFunc) {
 
 // Domain allows users to define custom domains.
 // A domain represents a set of error codes and their associated
-// message formats.
+// message formats. The format string is processed by text/template.
 func Domain(name string, domain DomainMap) {
 	tmpls := make(map[ErrCode]*template.Template)
 	for code, text := range domain {

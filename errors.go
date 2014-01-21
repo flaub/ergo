@@ -127,21 +127,24 @@ func Wrap(x interface{}, args ...interface{}) *Error {
 
 // Chain links an inner error to an outer one.
 // The result is the outer error.
-func Chain(inner *Error, err *Error) *Error {
+func Chain(inner error, err *Error) error {
 	if inner == nil {
 		return nil
 	}
-	err.Inner = inner
+	err.Inner = Wrap(inner)
 	return err
 }
 
 // Cause returns the cause of the error,
 // which is the innermost error in a chain.
-func Cause(err *Error) *Error {
-	if err.Inner == nil {
-		return err
+func Cause(err error) error {
+	if ergo, ok := err.(*Error); ok {
+		if ergo.Inner == nil {
+			return ergo
+		}
+		return Cause(ergo.Inner)
 	}
-	return Cause(err.Inner)
+	return err
 }
 
 // DomainFunc allows users to define custom domains.
